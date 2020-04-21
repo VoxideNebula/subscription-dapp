@@ -1,6 +1,6 @@
 pragma solidity ^0.6.1;
 
-import "../deps/SafeMath.sol";
+import "./SafeMath.sol";
 
 contract Subscription {
 
@@ -45,7 +45,7 @@ contract Subscription {
         "You cannot subscribe to yourself.");
         require(creators[_creator].active == true,
         "Address is not an active creator.");
-        require(msg.value.div(1 finney) >= creators[_creator].monthlyRate,
+        require(msg.value >= creators[_creator].monthlyRate,
         "Not enough ether sent to cover the requested months of subscription");
 
         // state changes
@@ -57,20 +57,25 @@ contract Subscription {
             creators[_creator].subscribers[msg.sender].active = true;
             creators[_creator].subscribers[msg.sender].expiration = now + 30 days;
         }
+        
+        if(msg.value > creators[_creator].monthlyRate) {
+            uint refundVal = msg.value;
+            refundVal = refundVal - creators[_creator].monthlyRate;
+            msg.sender.transfer(refundVal);
+        }
 
         // transfer ether to creator
-        uint oneFin = 1 finney;
-        _creator.transfer(creators[_creator].monthlyRate * oneFin);
+        _creator.transfer(creators[_creator].monthlyRate);
+        
 
         // call Subscribed event
         emit Subscribed(msg.sender, _creator);
     }
 
     // Enable and initialize the calling address as a creator
-    function addCreator(string memory _name, uint finneyRate) public {
+    function addCreator(string memory _name, uint weiRate) public {
         require(creators[msg.sender].active != true, "Already a creator");
-        uint oneFin = 1 finney;
-        creators[msg.sender].monthlyRate = finneyRate * oneFin;
+        creators[msg.sender].monthlyRate = weiRate;
         creators[msg.sender].name = _name;
         creators[msg.sender].active = true;
         creators[msg.sender].subCount = 0;
@@ -91,10 +96,9 @@ contract Subscription {
         }
     }
 
-    // function to change monthly rate
+    // function to change monthly rate in wei
     function changeRate(uint newRate) public creatorOnly {
-        uint oneFin = 1 finney;
-        creators[msg.sender].monthlyRate = newRate * oneFin;
+        creators[msg.sender].monthlyRate = newRate;
     }
 
     // TODO: function to deactivate creator
@@ -104,6 +108,17 @@ contract Subscription {
 
     // function to get monthly Rate of creator
     function getMonthlyRate(address _creator) public view returns(uint amount) {
+        require(creators[_creator].active == true,
+        "Requested address is not a creator");
         return creators[_creator].monthlyRate;
     }
+    
+    // function to check subscription
+    function checkSub(address _creator, address _subscriber) public returns(bool status) {
+        return checkSubStatus(_creator, _subscriber);
+    }
+    
+    // Get longest supporter?
+    
+    // 
 }
